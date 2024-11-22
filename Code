@@ -1,0 +1,449 @@
+#include <iostream>
+#include <vector>
+#include <string>
+#include <stdexcept>
+#include <iomanip>
+#include <cmath>
+#include <fstream>
+
+using namespace std;
+
+// Klase Date (Inkapsuliacija, Abstrakcija)
+class Date {
+public:
+    int day, month, year; // (Inkapsuliacija)
+
+    // Konstruktorius, kuris leidzia sukurti datos objekta su numatytomis
+    // arba vartotojo pateiktomis datomis (Inkapsuliacija, Abstrakcija)
+    Date(int d = 1, int m = 1, int y = 2024) : day(d), month(m), year(y) {}
+
+    // Funkcija skaiciuoja dienų skirtuma
+    // (Abstrakcija - idiegta sudetinga logika, taciau vartotojui yra parodama 
+    // paprasta sasaja)
+    int calculateDaysDifference(const Date& other) const {
+        int total1 = year * 365 + month * 30 + day;
+        int total2 = other.year * 365 + other.month * 30 + other.day;
+        return abs(total2 - total1);
+    }
+
+    // Funkcija, kuri atvaizduoja data vartotojui patogiu formatu (Abstrakcija)
+    void display() const {
+        cout << day << "/" << month << "/" << year;
+    }
+
+    // Statine funkcija, leidzianti vartotojui ivesti data (Inkapsuliacija)
+    static Date getDateFromUser(const string& prompt) {
+        int d, m, y;
+        cout << prompt;
+        cin >> d >> m >> y;
+        return Date(d, m, y);
+    }
+};
+
+
+// Inkapsuliacija: privacios savybes (private) (name, phone, email) 
+// valdomos per viesas (public) funkcijas
+class Customer {
+private:
+    string name;
+    string phone;
+    string email;
+
+public:
+    // Konstruktorius: leidzia inicializuoti kliento savybes 
+    // (Inkapsuliacija, Abstrakcija)
+    Customer(string name, string phone, string email)
+        : name(name), phone(phone), email(email) {
+    }
+
+    // Viesa funkcija informacijai apie klienta parodyti 
+    // (Abstrakcija - paprasta vartotojo sasaja)
+    void displayCustomerInfo() const {
+        cout << endl;
+        cout << "Kliento vardas: " << name << endl;
+        cout << "Telefonas: " << phone << endl;
+        cout << "El. pastas: " << email << endl;
+    }
+
+    // Funkcija grazina kliento varda 
+    // (Inkapsuliacija: suteikiama prieiga prie private savybes)
+    string getName() const { return name; }
+
+    // Funkcija, kuri issaugo informacija apie klienta faile 
+    // (Abstrakcija: vartotojui nereikia zinoti failo valdymo detaliu)
+    void saveToFile() const {
+        ofstream file("customers.txt", ios::app);
+        if (file.is_open()) {
+            file << "Vardas: " << name << ", Telefonas: " << phone
+                << ", El. pastas: " << email << endl;
+        }
+        else {
+            cout << "Klaida atidarant faila." << endl;
+        }
+        file.close();
+    }
+};
+
+// Klase Room skirta viesbucio kambariu kurimui
+class Room {
+public:
+    int roomNumber;
+    bool isBooked;
+    double basePrice;
+    int beds;
+    double size;
+    string view;
+
+
+    // Konstruktorius, kuris inicializuoja kambario savybes
+    Room(int number, double price, int beds, double size, string view)
+        : roomNumber(number), basePrice(price), isBooked(false), beds(beds), size(size), view(view) {
+    }
+
+    // Apskaiciuojama bendra kambario kaina uz nurodyta dienu skaiciu, ir
+    // yra atsizvelgiama ar yra itraukos papildomos paslaugos,
+    // pvz., pusrycius ar SPA
+    virtual double calculatePrice(int days, bool includeBreakfast = false, bool includeSpa = false) const {
+        double price = basePrice * days;
+        if (includeBreakfast) price += 10 * days;
+        if (includeSpa) price += 20 * days;
+        return price;
+    }
+
+    // Rezervuoja kambario vieta
+    void bookRoom() { isBooked = true; }
+
+    // Atsaukia kambario rezervacija
+    void cancelBooking() { isBooked = false; }
+
+    // Patikrina kambario prieinamuma
+    bool checkAvailability() const { return !isBooked; }
+
+    // Rodo kambario informacija
+    virtual void displayInfo() const {
+        cout << endl;
+        cout << "Kambario numeris: " << roomNumber << endl;
+        cout << "Kaina: Eur." << fixed << setprecision(2) << basePrice << " uz diena" << endl;
+        cout << "Lovu skaicius: " << beds << endl;
+        cout << "Dydis: " << size << " kv. m" << endl;
+        cout << "Vaizdas: " << view << endl;
+        cout << "Prieinamumas: " << (isBooked ? "Uzimta" : "Laisva") << endl;
+    }
+
+    // Virtualus destruktorius, kuris uztikrina teisinga atminties 
+    // valdyma paveldejimo atveju
+    virtual ~Room() {}
+};
+
+
+// Klases StandardRoom paveldi Room klase r nustato standartinius kambario parametrus
+class StandardRoom : public Room {
+public:
+    StandardRoom(int number) : Room(number, 100.0, 2, 20.0, "I miesta") {}
+};
+
+// Klases StandardRoom paveldi tevyne Room klase
+// ir yra nustatomi standartiniai kambario parametrai
+class DeluxeRoom : public Room {
+private:
+    double additionalCharge; 
+
+    // Klase DeluxeRoom paveldi tevyne Room klase ir pridedamas 
+    // papildomas mokestis už prabanga
+public:
+    DeluxeRoom(int number) : Room(number, 150.0, 3, 30.0, "I parka"), additionalCharge(50.0) {}
+
+    // Atnaujina kaina pridedamas prabangos mokesti
+    double calculatePrice(int days, bool includeBreakfast = false, bool includeSpa = false) const override {
+        double price = Room::calculatePrice(days, includeBreakfast, includeSpa);
+        price += additionalCharge; // Papildomas mokestis
+        return price;
+    }
+
+    // Atspausdina kambario kaina su papildomu mokesciu
+    void displayInfo() const override {
+        Room::displayInfo();
+        cout << "Papildomas mokestis: Eur." << fixed << setprecision(2) << additionalCharge << endl;
+    }
+};
+
+// Klase SuiteRoom paveldi tevyne Room klase ir prideda prabangos mokesti
+class SuiteRoom : public Room {
+private:
+    double luxuryTax; 
+
+public:
+    SuiteRoom(int number) : Room(number, 300.0, 4, 50.0, "I jura"), luxuryTax(100.0) {}
+
+    /// Atnaujina kaina pridedamas prabangos mokesti
+    double calculatePrice(int days, bool includeBreakfast = false, bool includeSpa = false) const override {
+        double price = Room::calculatePrice(days, includeBreakfast, includeSpa);
+        price += luxuryTax; 
+        return price;
+    }
+
+    // Atspausdina kambario kaina su papildomu mokesciu
+    void displayInfo() const override {
+        Room::displayInfo();
+        cout << "Prabangos mokestis: Eur." << fixed << setprecision(2) << luxuryTax << endl;
+    }
+};
+
+
+// Klase Reservation skirta rezervacijos valdymui, susieja klienta, kambari ir datas
+class Reservation {
+private:
+    Customer* customer; 
+    Room* room; 
+    int days; 
+    Date checkInDate; 
+    Date checkOutDate; 
+
+public:
+    // Konstruktoriumi nustatomi visi reikalingi parametrai ir rezervuojamas kambarys
+    Reservation(Customer* customer, Room* room, Date checkIn, Date checkOut)
+        : customer(customer), room(room), days(checkIn.calculateDaysDifference(checkOut)),
+        checkInDate(checkIn), checkOutDate(checkOut) {
+        room->bookRoom(); // Kambarys užsakomas
+    }
+
+    // Konstruktoriumi nustatomi visi reikalingi parametrai ir rezervuojamas kambarys
+    double calculateTotalCost(bool includeBreakfast = false, bool includeSpa = false) const {
+        return room->calculatePrice(days, includeBreakfast, includeSpa);
+    }
+
+    // Atspausdinama visa rezervacijos informacija
+    void displayReservationDetails() const {
+        customer->displayCustomerInfo(); 
+        cout << "Isiregistravimo data: ";
+        checkInDate.display(); 
+        cout << "\nIssiregistravimo data: ";
+        checkOutDate.display(); 
+        cout << "\nDienu skaicius: " << days << endl; 
+        cout << "Rezervuotas kambarys:" << endl;
+        room->displayInfo(); 
+        cout << "Bendra kaina: Eur." << fixed << setprecision(2) << calculateTotalCost() << endl; // Bendra kaina
+    }
+
+    // Void funckija yra atsakinga už rezervacijos atsaukima ir 
+    // kambario uzsakymo atsaukima
+    void cancelReservation() {
+        room->cancelBooking(); 
+        cout << "Rezervacija atsaukta." << endl; 
+    }
+
+    // Grazinama nuoroda i susijusi klienta
+    Customer* getCustomer() const {
+        return customer;
+    }
+};
+
+
+// Klase Hotel skirta viesbucio valdymui
+class Hotel {
+private:
+    //Kambariu, klientu, rezervaciju sarasai
+    vector<Room*> rooms; 
+    vector<Customer*> customers; 
+    vector<Reservation*> reservations; 
+
+public:
+    //Kambariu, klientu, rezervaciju sarasai
+    Hotel() {
+        rooms.push_back(new StandardRoom(101)); 
+        rooms.push_back(new DeluxeRoom(102)); 
+        rooms.push_back(new SuiteRoom(103)); 
+        rooms.push_back(new StandardRoom(104)); 
+        rooms.push_back(new DeluxeRoom(105)); 
+    }
+
+    // Atspausdinami visi kambariai
+    void displayRooms() const {
+        cout << "Musu kambariai:" << endl;
+        for (const auto& room : rooms) {
+            if (room->checkAvailability()) {
+            room->displayInfo();
+            }
+        }
+    }
+
+    // Atspausdina tik laisvus kambarius
+    void displayFreeRooms() const {
+        cout << "Laisvi kambariai:" << endl;
+        bool availableRooms = false; // Tikrinama, ar yra laisvu kambariu
+        for (const auto& room : rooms) {
+            if (!room->checkAvailability()) {
+                continue; 
+            }
+            room->displayInfo(); 
+            availableRooms = true; 
+        }
+        if (!availableRooms) {
+            cout << "Nera laisvu kambariu." << endl; 
+        }
+    }
+
+    // Funckija, skirta kambariui uzsakyti
+    void bookRoom() {
+        string name, phone, email;
+        cout << "Iveskite savo varda: ";
+        cin >> name; 
+        cout << "Iveskite telefono numeri: ";
+        cin >> phone; 
+        cout << "Iveskite el. pasta: ";
+        cin >> email; 
+        cout << endl;
+    
+        // Sukuriamas naujas klientas
+        Customer* customer = new Customer(name, phone, email); 
+
+        displayRooms(); 
+        cout << endl;
+        
+        int roomNumber;
+
+
+        Room* selectedRoom = nullptr; // Pasirinktas kambarys priskiriamas nullptr
+
+        while (!selectedRoom) {
+            cout << "Pasirinkite kambario numeri: ";
+            cin >> roomNumber;
+
+            // Ieskoma kambario su pasirinktu numeriu
+            for (auto& room : rooms) {
+                if (room->roomNumber == roomNumber) {
+                    if (!room->checkAvailability()) { // Tikrinama, ar kambarys laisvas
+                        cout << "Kambarys jau uzimtas!" << endl;
+                        selectedRoom = nullptr; // Uzimtas kamabrys nera priskiriamas
+                        break;
+                    }
+                    selectedRoom = room; // Jei kambarys laisvas, priskiriamas klientui
+                    break;
+                }
+            }
+            // Kintamasis yra priskirtas patikrinti ar ivestas kambario
+            // numeris egzistuoja
+            bool roomExists = false;
+
+            // Einama per esamu kambariu skaiciu sarasa
+            for (const auto& room : rooms) {
+
+                // If sakinys skirtas jei kambarys su ivestu numeriu egzistuoja
+                if (room->roomNumber == roomNumber) {
+                    roomExists = true;
+                    break;
+                }
+            }
+                // Jei ivesto kambario numerio nera, prasoma is naujo ivesti numeri
+            if (!roomExists) {
+                cout << "Kambarys su numeriu " << roomNumber <<
+                    " nerastas. Bandykite dar karta." << endl;
+                }
+            
+        }
+
+        // Pasirenkamos papildomos paslaugos
+        bool includeBreakfast = false;
+        bool includeSpa = false;
+        char choice;
+
+        cout << "Ar norite pusryciu: 10 Eur / dienai? (t/n): ";
+        cin >> choice;
+        if (choice == 't' || choice == 'T') {
+            includeBreakfast = true; 
+        }
+
+        cout << "Ar norite SPA paslaugu: 20 Eur / dienai? (t/n): ";
+        cin >> choice;
+        if (choice == 't' || choice == 'T') {
+            includeSpa = true; 
+        }
+
+        Date checkIn = Date::getDateFromUser("Iveskite isiregistravimo data (diena, menesis, metai): ");
+        Date checkOut = Date::getDateFromUser("Iveskite issiregistravimo data (diena, menesis, metai): ");
+
+        // Sukuriama rezervacija ir pridedama i rezervaciju sarasa
+        Reservation* reservation = new Reservation(customer, selectedRoom, checkIn, checkOut); 
+        reservations.push_back(reservation); 
+
+        customer->saveToFile(); 
+
+        // Apskaiciuojama galutine kaina
+        double totalCost = reservation->calculateTotalCost(includeBreakfast, includeSpa); // Apskaičiuojama bendroji kaina
+        cout << "Galutine kaina su paslaugomis: Eur." << fixed << setprecision(2) << totalCost << endl;
+    }
+
+    // Funckija atspausdinanati visas rezervacijas
+    void displayReservations() const {
+        cout << "Visos rezervacijos:" << endl;
+        for (const auto& reservation : reservations) {
+            reservation->displayReservationDetails(); 
+        }
+    }
+
+    // Funkcija rezervacijai atsaukti
+    void cancelReservation() {
+        int reservationId;
+        cout << "Iveskite rezervacijos ID (1 - " << reservations.size() << "): ";
+        cin >> reservationId;
+
+        // Tikrinamasis sakinys
+        if (reservationId < 1 || reservationId > reservations.size()) {
+            cout << "Klaidingas ID!" << endl; 
+            return;
+        }
+
+        reservations[reservationId - 1]->cancelReservation(); 
+    }
+
+    // Viesbucio destruktorius, kuris isvalo atminti nuo pertekliaus
+    ~Hotel() {
+        for (auto room : rooms) delete room; 
+        for (auto customer : customers) delete customer; 
+        for (auto reservation : reservations) delete reservation; 
+    }
+};
+
+
+int main() {
+    Hotel hotel;
+    int choice;
+    cout << "Sveiki atvyke i viesbuti!" << endl;
+
+    do {
+        cout << "\n1. Rezervuoti kambari" << endl;
+        cout << "2. Perziureti visus kambarius" << endl;
+        cout << "3. Perziureti laisvus kambarius" << endl;
+        cout << "4. Perziureti rezervacijas" << endl;
+        cout << "5. Atsaukti rezervacija" << endl;
+        cout << "6. Iseiti" << endl;
+        cout << "Pasirinkite veiksma: ";
+        cin >> choice;
+        cout << endl;
+
+        switch (choice) {
+        case 1:
+            hotel.bookRoom();
+            break;
+        case 2:
+            hotel.displayRooms();
+            break;
+        case 3:
+            hotel.displayFreeRooms();
+            break;
+        case 4:
+            hotel.displayReservations();
+            break;
+        case 5:
+            hotel.cancelReservation();
+            break;
+        case 6:
+            cout << "Aciu, kad naudojotes muss paslaugomis!" << endl;
+            break;
+        default:
+            cout << "Neteisingas pasirinkimas!" << endl;
+        }
+    } while (choice != 5);
+
+    return 0;
+}
